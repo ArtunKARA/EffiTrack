@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # Veri setini okuma
-file_path = 'C:/Users/Artun/Desktop/Dosyalar/github_repos/DataFluxAI/Data/HRSS_anomalous_standard.csv'  # Dosya yolunu buraya girin
+file_path = 'C:/Users/Artun/Desktop/Dosyalar/github_repos/EffiTrack/Data/HRSS_normal_optimized.csv'  # Dosya yolunu buraya girin
 dataset = pd.read_csv(file_path)
 
 # Sayısal sütunların seçimi
