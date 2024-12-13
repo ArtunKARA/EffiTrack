@@ -2,13 +2,13 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler, StandardScaler
 import numpy as np
 from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Dropout
+from tensorflow.keras.layers import LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 
 # SparkSession başlatma
 spark = SparkSession.builder \
-    .appName("SimplifiedAutoencoderMetrics") \
+    .appName("SimplifiedLSTMMetrics") \
     .master("local[*]") \
     .getOrCreate()
 
@@ -36,40 +36,42 @@ split_index = int(len(features) * (1 - validation_split))
 train_features, val_features = features[:split_index], features[split_index:]
 train_labels, val_labels = labels[:split_index], labels[split_index:]
 
-# Autoencoder Modeli
-input_dim = features.shape[1]
-autoencoder = Sequential([
-    Dense(64, activation="relu", input_dim=input_dim),  # İlk gizli katman
-    Dense(32, activation="relu"),  # Sıkıştırma katmanı
-    Dense(64, activation="relu"),  # Yeniden genişleme katmanı
-    Dense(input_dim, activation="linear")  # Çıkış katmanı
+# Verileri LSTM için yeniden şekillendirme
+train_features = train_features.reshape(train_features.shape[0], train_features.shape[1], 1)
+val_features = val_features.reshape(val_features.shape[0], val_features.shape[1], 1)
+
+# LSTM Modeli
+input_shape = (train_features.shape[1], train_features.shape[2])
+lstm_model = Sequential([
+    LSTM(64, activation="relu", input_shape=input_shape, return_sequences=True),
+    LSTM(32, activation="relu", return_sequences=False),
+    Dense(32, activation="relu"),
+    Dropout(0.2),
+    Dense(1, activation="sigmoid")
 ])
 
 # Model derleme
-autoencoder.compile(optimizer="adam", loss="mse")
+lstm_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
 # Early Stopping tanımlama
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
 # Model eğitimi
-history = autoencoder.fit(
-    train_features, train_features,
+history = lstm_model.fit(
+    train_features, train_labels,
     epochs=50,
     batch_size=32,
     shuffle=True,
-    validation_data=(val_features, val_features)
-    )
+    validation_data=(val_features, val_labels),
+    callbacks=[early_stopping]
+)
 
-# Yeniden oluşturma hatalarını hesaplama
-train_reconstructed = autoencoder.predict(train_features)
-val_reconstructed = autoencoder.predict(val_features)
-
-train_reconstruction_error = np.mean((train_features - train_reconstructed) ** 2, axis=1)
-val_reconstruction_error = np.mean((val_features - val_reconstructed) ** 2, axis=1)
+# Tahminler ve anomali tespiti
+val_predictions = lstm_model.predict(val_features).flatten()
 
 # Performans Metriklerini Hesaplama Fonksiyonu
-def calculate_metrics(threshold, reconstruction_error, true_labels):
-    anomalies = (reconstruction_error > threshold).astype(int)
+def calculate_metrics(threshold, predictions, true_labels):
+    anomalies = (predictions > threshold).astype(int)
     TP = np.sum((anomalies == 1) & (true_labels == 1))  # Gerçek pozitif
     TN = np.sum((anomalies == 0) & (true_labels == 0))  # Gerçek negatif
     FP = np.sum((anomalies == 1) & (true_labels == 0))  # Yanlış pozitif
@@ -84,11 +86,11 @@ def calculate_metrics(threshold, reconstruction_error, true_labels):
     return TP, TN, FP, FN, accuracy, precision, recall, f1_score, error_rate
 
 # Eşik Değerlerini Test Etme
-thresholds = np.percentile(train_reconstruction_error, np.arange(10, 100, 10))
+thresholds = np.arange(0.1, 0.9, 0.1)
 results = []
 
 for threshold in thresholds:
-    metrics = calculate_metrics(threshold, val_reconstruction_error, val_labels)
+    metrics = calculate_metrics(threshold, val_predictions, val_labels)
     results.append((threshold, *metrics))
 
 # Sonuçları Yazdırma

@@ -5,11 +5,11 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
-object NaiveBayes {
+object NaiveBayesMetrics {
   def main(args: Array[String]): Unit = {
     // SparkSession başlatma
     val spark = SparkSession.builder
-      .appName("NaiveBayes")
+      .appName("NaiveBayesMetrics")
       .master("local[*]")
       .getOrCreate()
 
