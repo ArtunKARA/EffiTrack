@@ -1,0 +1,15 @@
+UNDERSAMPLE 
+-Optimize
+1 : 4517 adet
+0 : 4496 adet
+-Standart
+0 : 5706 adet
+1 : 5670 adet
+
+SMOTE
+-Standart
+0: 17,975 adet
+1: 17,975 adet
+-Optimize
+0: 15,117 adet
+1: 15,117 adet

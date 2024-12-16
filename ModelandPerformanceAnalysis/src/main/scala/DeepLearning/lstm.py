@@ -62,8 +62,7 @@ history = lstm_model.fit(
     epochs=50,
     batch_size=32,
     shuffle=True,
-    validation_data=(val_features, val_labels),
-    callbacks=[early_stopping]
+    validation_data=(val_features, val_labels)
 )
 
 # Tahminler ve anomali tespiti
