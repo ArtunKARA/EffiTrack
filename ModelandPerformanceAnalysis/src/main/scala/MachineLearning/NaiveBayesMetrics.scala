@@ -14,7 +14,7 @@ object NaiveBayesMetrics {
       .getOrCreate()
 
     // Veri setini yükleme
-    val dataPath = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_anomalous_standard.csv"
+    val dataPath = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_SMOTE_standard.csv"
     val rawData = spark.read.option("header", "true").option("inferSchema", "true").csv(dataPath)
 
     // Negatif değerleri pozitif yapmak için minimum değeri bulma

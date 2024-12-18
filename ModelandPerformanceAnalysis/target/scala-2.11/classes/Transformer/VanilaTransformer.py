@@ -3,19 +3,18 @@ import matplotlib.pyplot as plt
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Concatenate
+from tensorflow.keras.layers import Input, Dense, LayerNormalization, Dropout, MultiHeadAttention
 from tensorflow.keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
-import tensorflow as tf  # TensorFlow kütüphanesi ekleniyor
 
 # 1. Spark Session Oluşturuluyor
 spark = SparkSession.builder \
-    .appName("Vanilla Transformer") \
-    .master("local[*]") \
+    .appName("Vanilla Transformer with Spark") \
+     .master("local[*]") \
     .getOrCreate()
 
 # 2. Veri Setini Yükleme
-file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_undersample_optimized.csv"
+file_path = "/mnt/data/HRSS_undersample_optimized.csv"
 df = spark.read.csv(file_path, header=True, inferSchema=True)
 
 # 3. Pandas'a Dönüştürme ve Veri Ön Hazırlama
@@ -23,31 +22,19 @@ pdf = df.toPandas()
 pdf.fillna(0, inplace=True)
 
 # Veri ve etiket ayrımı
-y = pdf['Labels']  # Etiketler, label kolonunda olduğu varsayıldı
-X = pdf.drop(columns=['Labels'])
+y = pdf['label']  # Etiketler, label kolonunda olduğu varsayıldı
+X = pdf.drop(columns=['label'])
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # 4. Vanilla Transformer Modeli Tanımlama
 def vanilla_transformer(input_dim):
     inputs = Input(shape=(input_dim,))
-    x = Dense(128)(inputs)
-    x = BatchNormalization()(x)
-    x = Activation("relu")(x)
+    x = Dense(128, activation="relu")(inputs)
+    x = LayerNormalization()(x)
+    x = MultiHeadAttention(num_heads=2, key_dim=128)(x, x)
     x = Dropout(0.3)(x)
-
-    branch1 = Dense(64)(x)
-    branch1 = BatchNormalization()(branch1)
-    branch1 = Activation("relu")(branch1)
-
-    branch2 = Dense(64)(x)
-    branch2 = BatchNormalization()(branch2)
-    branch2 = Activation("tanh")(branch2)
-
-    combined = Concatenate()([branch1, branch2])
-    x = Dense(32)(combined)
-    x = Activation("relu")(x)
+    x = Dense(64, activation="relu")(x)
     outputs = Dense(1, activation="sigmoid")(x)  # Binary classification için sigmoid kullanılır
-
     model = Model(inputs, outputs)
     model.compile(optimizer=Adam(0.001), loss="binary_crossentropy", metrics=["accuracy"])
     return model
@@ -58,7 +45,7 @@ model = vanilla_transformer(X_train.shape[1])
 history = model.fit(
     X_train, y_train,
     validation_data=(X_val, y_val),
-    epochs=25,
+    epochs=10,
     batch_size=32,
     verbose=1
 )

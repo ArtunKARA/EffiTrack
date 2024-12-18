@@ -2,13 +2,13 @@ from pyspark.sql import SparkSession
 from pyspark.ml.feature import VectorAssembler, StandardScaler
 import numpy as np
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Dense, Dropout, MultiHeadAttention, LayerNormalization, Add, Flatten
+from tensorflow.keras.layers import Input, Dense, Dropout, MultiHeadAttention, LayerNormalization, Add, Flatten, LSTM, Concatenate
 from tensorflow.keras.callbacks import EarlyStopping
 import matplotlib.pyplot as plt
 
 # SparkSession başlatma
 spark = SparkSession.builder \
-    .appName("EncoderDecoderTransformer") \
+    .appName("TemporalFusionTransformer") \
     .master("local[*]") \
     .getOrCreate()
 
@@ -36,7 +36,7 @@ split_index = int(len(features) * (1 - validation_split))
 train_features, val_features = features[:split_index], features[split_index:]
 train_labels, val_labels = labels[:split_index], labels[split_index:]
 
-# Verileri Transformer için yeniden şekillendirme
+# Verileri TFT için yeniden şekillendirme
 train_features = train_features.reshape(train_features.shape[0], train_features.shape[1], 1)
 val_features = val_features.reshape(val_features.shape[0], val_features.shape[1], 1)
 
@@ -44,68 +44,56 @@ val_features = val_features.reshape(val_features.shape[0], val_features.shape[1]
 train_labels = np.squeeze(train_labels)
 val_labels = np.squeeze(val_labels)
 
-# Encoder-Decoder Transformer
+# Temporal Fusion Transformer Modeli
 
-def encoder_block(inputs, num_heads, key_dim, ff_dim, dropout_rate=0.1):
-    attention_output = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(inputs, inputs)
-    attention_output = Dropout(dropout_rate)(attention_output)
-    attention_output = Add()([inputs, attention_output])
+def tft_model(input_shape):
+    # Giriş katmanı
+    inputs = Input(shape=input_shape)
+
+    # LSTM Encoder
+    lstm_out = LSTM(64, return_sequences=True)(inputs)
+    lstm_out = Dropout(0.2)(lstm_out)
+
+    # Multi-Head Attention
+    attention_output = MultiHeadAttention(num_heads=4, key_dim=64)(lstm_out, lstm_out)
+    attention_output = Add()([lstm_out, attention_output])
     attention_output = LayerNormalization()(attention_output)
 
-    ff_output = Dense(ff_dim, activation="relu")(attention_output)
-    ff_output = Dense(inputs.shape[-1])(ff_output)
-    ff_output = Dropout(dropout_rate)(ff_output)
-    ff_output = Add()([attention_output, ff_output])
-    return LayerNormalization()(ff_output)
+    # Tam Bağlantılı Katmanlar
+    dense_out = Dense(128, activation="relu")(attention_output)
+    dense_out = Dropout(0.2)(dense_out)
+    dense_out = Dense(64, activation="relu")(dense_out)
 
-def decoder_block(encoder_outputs, decoder_inputs, num_heads, key_dim, ff_dim, dropout_rate=0.1):
-    attention_output = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(decoder_inputs, decoder_inputs)
-    attention_output = Dropout(dropout_rate)(attention_output)
-    attention_output = Add()([decoder_inputs, attention_output])
-    attention_output = LayerNormalization()(attention_output)
+    # Çıkış Katmanı
+    output = Dense(1, activation="sigmoid")(dense_out)
+    output = Flatten()(output)
 
-    cross_attention_output = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim)(
-        attention_output, encoder_outputs)
-    cross_attention_output = Dropout(dropout_rate)(cross_attention_output)
-    cross_attention_output = Add()([attention_output, cross_attention_output])
-    cross_attention_output = LayerNormalization()(cross_attention_output)
+    # Modeli oluşturma
+    model = Model(inputs, output)
+    return model
 
-    ff_output = Dense(ff_dim, activation="relu")(cross_attention_output)
-    ff_output = Dense(decoder_inputs.shape[-1])(ff_output)
-    ff_output = Dropout(dropout_rate)(ff_output)
-    ff_output = Add()([cross_attention_output, ff_output])
-    return LayerNormalization()(ff_output)
-
-# Model
-encoder_inputs = Input(shape=(train_features.shape[1], train_features.shape[2]))
-encoder_outputs = encoder_block(encoder_inputs, num_heads=4, key_dim=64, ff_dim=128)
-
-decoder_inputs = Input(shape=(train_features.shape[1], train_features.shape[2]))
-decoder_outputs = decoder_block(encoder_outputs, decoder_inputs, num_heads=4, key_dim=64, ff_dim=128)
-
-decoder_outputs = Dense(1, activation="sigmoid")(decoder_outputs)
-output_layer = Flatten()(decoder_outputs)  # Çıkışı düzleştir
-
-transformer_model = Model(inputs=[encoder_inputs, decoder_inputs], outputs=output_layer)
+# TFT Modeli
+input_shape = (train_features.shape[1], train_features.shape[2])
+tft = tft_model(input_shape)
 
 # Model derleme
-transformer_model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+tft.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
 
 # Early Stopping tanımlama
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
 
 # Model eğitimi
-history = transformer_model.fit(
-    [train_features, train_features], train_labels,  # Encoder ve decoder için aynı giriş
+history = tft.fit(
+    train_features, train_labels,
     epochs=50,
     batch_size=32,
     shuffle=True,
-    validation_data=([val_features, val_features], val_labels),
+    validation_data=(val_features, val_labels),
     callbacks=[early_stopping]
 )
 
 # Tahminler ve anomali tespiti
-val_predictions = transformer_model.predict([val_features, val_features]).flatten()
+val_predictions = tft.predict(val_features).flatten()
 
 # Boyutları eşitle
 min_length = min(len(val_predictions), len(val_labels))
