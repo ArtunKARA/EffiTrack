@@ -5,8 +5,8 @@ from pyspark.sql.functions import col
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input, Dense, Dropout, BatchNormalization, Activation, Concatenate
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
-import tensorflow as tf  # TensorFlow kütüphanesi ekleniyor
 
 # 1. Spark Session Oluşturuluyor
 spark = SparkSession.builder \
@@ -15,7 +15,7 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # 2. Veri Setini Yükleme
-file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_undersample_optimized.csv"
+file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_SMOTE_standard.csv"
 df = spark.read.csv(file_path, header=True, inferSchema=True)
 
 # 3. Pandas'a Dönüştürme ve Veri Ön Hazırlama
@@ -23,51 +23,59 @@ pdf = df.toPandas()
 pdf.fillna(0, inplace=True)
 
 # Veri ve etiket ayrımı
-y = pdf['Labels']  # Etiketler, label kolonunda olduğu varsayıldı
-X = pdf.drop(columns=['Labels'])
+y = pdf['Labels'].to_numpy()  # Etiketler
+X = pdf.drop(columns=['Labels']).to_numpy()
+
+# 4. Eğitim ve Doğrulama Seti Ayrımı
 X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 4. Vanilla Transformer Modeli Tanımlama
+# TensorFlow için veri tiplerini ayarlama
+X_train = X_train.astype('float32')
+X_val = X_val.astype('float32')
+y_train = y_train.astype('float32')
+y_val = y_val.astype('float32')
+
+# 5. Vanilla Transformer Modeli Tanımlama
 def vanilla_transformer(input_dim):
     inputs = Input(shape=(input_dim,))
-    x = Dense(128)(inputs)
+    x = Dense(128, activation="relu")(inputs)
     x = BatchNormalization()(x)
-    x = Activation("relu")(x)
     x = Dropout(0.3)(x)
 
-    branch1 = Dense(64)(x)
+    branch1 = Dense(64, activation="relu")(x)
     branch1 = BatchNormalization()(branch1)
-    branch1 = Activation("relu")(branch1)
 
-    branch2 = Dense(64)(x)
+    branch2 = Dense(64, activation="tanh")(x)
     branch2 = BatchNormalization()(branch2)
-    branch2 = Activation("tanh")(branch2)
 
     combined = Concatenate()([branch1, branch2])
-    x = Dense(32)(combined)
-    x = Activation("relu")(x)
+    x = Dense(32, activation="relu")(combined)
     outputs = Dense(1, activation="sigmoid")(x)  # Binary classification için sigmoid kullanılır
 
     model = Model(inputs, outputs)
     model.compile(optimizer=Adam(0.001), loss="binary_crossentropy", metrics=["accuracy"])
     return model
 
+# Model oluşturma
 model = vanilla_transformer(X_train.shape[1])
 
-# 5. Modeli Eğitme
+# 6. Erken Durdurma Callback'i Tanımlama
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, restore_best_weights=True)
+
+# 7. Modeli Eğitme
 history = model.fit(
     X_train, y_train,
     validation_data=(X_val, y_val),
-    epochs=25,
+    epochs=100,
     batch_size=32,
-    verbose=1
+    verbose=1,
+    callbacks=[early_stopping]
 )
 
-# 6. Tahminler
-val_predictions = model.predict(X_val)
-val_labels = y_val.to_numpy()
+# 8. Tahminler
+val_predictions = model.predict(X_val).flatten()  # Tahminleri düzleştir
 
-# 7. Performans Metriklerini Hesaplama Fonksiyonu
+# 9. Performans Metriklerini Hesaplama Fonksiyonu
 def calculate_metrics(threshold, predictions, true_labels):
     anomalies = (predictions > threshold).astype(int)
     TP = np.sum((anomalies == 1) & (true_labels == 1))
@@ -75,22 +83,22 @@ def calculate_metrics(threshold, predictions, true_labels):
     FP = np.sum((anomalies == 1) & (true_labels == 0))
     FN = np.sum((anomalies == 0) & (true_labels == 1))
 
-    accuracy = (TP + TN) / (TP + TN + FP + FN)
+    accuracy = (TP + TN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0
     precision = TP / (TP + FP) if (TP + FP) > 0 else 0
     recall = TP / (TP + FN) if (TP + FN) > 0 else 0
     f1_score = 2 * (precision * recall) / (precision + recall) if (precision + recall) > 0 else 0
-    error_rate = (FP + FN) / (TP + TN + FP + FN)
+    error_rate = (FP + FN) / (TP + TN + FP + FN) if (TP + TN + FP + FN) > 0 else 0
 
     return TP, TN, FP, FN, accuracy, precision, recall, f1_score, error_rate
 
-# 8. Eşik Değerlerini Test Etme
+# 10. Eşik Değerlerini Test Etme
 thresholds = np.arange(0.1, 0.9, 0.1)
 results = []
 for threshold in thresholds:
-    metrics = calculate_metrics(threshold, val_predictions, val_labels)
+    metrics = calculate_metrics(threshold, val_predictions, y_val)
     results.append((threshold, *metrics))
 
-# 9. Sonuçları Yazdırma
+# 11. Sonuçları Yazdırma
 print("Threshold | TP  | TN  | FP  | FN  | Accuracy | Precision | Recall | F1 Score | Error Rate")
 for result in results:
     print(f"{result[0]:.2f}      | {result[1]:3} | {result[2]:3} | {result[3]:3} | {result[4]:3} | "
@@ -104,7 +112,7 @@ print(f"Doğruluk (Accuracy): {best_threshold[5]:.4f}, Kesinlik (Precision): {be
 print(f"Duyarlılık (Recall): {best_threshold[7]:.4f}, F Ölçümü (F1 Score): {best_threshold[8]:.4f}")
 print(f"Hata Oranı (Error Rate): {best_threshold[9]:.4f}")
 
-# 10. Küyüp Grafiği
+# 12. Kayıp Grafiği
 plt.plot(history.history['loss'], label='Eğitim Kaybı')
 plt.plot(history.history['val_loss'], label='Doğrulama Kaybı')
 plt.xlabel('Epochs')

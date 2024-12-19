@@ -15,7 +15,7 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # 2. Veri Setini Okuma
-file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_undersample_optimized.csv"
+file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_SMOTE_standard.csv"
 df = spark.read.csv(file_path, header=True, inferSchema=True)
 pandas_df = df.toPandas()  # Spark DataFrame'i Pandas'a donusturme
 
@@ -40,7 +40,7 @@ model = Sequential([
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # Modeli Egitme
-history = model.fit(X_train, y_train, epochs=100, batch_size=32, validation_data=(X_val, y_val))
+history = model.fit(X_train, y_train, epochs=200, batch_size=32, validation_data=(X_val, y_val))
 
 # 5. Performans Metriklerini Hesaplama
 val_predictions = model.predict(X_val).flatten()  # Tahmin edilen degerler

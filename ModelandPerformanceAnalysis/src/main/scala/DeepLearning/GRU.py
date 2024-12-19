@@ -17,7 +17,7 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # Veriyi Yükleme
-data_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_undersample_optimized.csv"
+data_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_SMOTE_standard.csv"
 df = spark.read.csv(data_path, header=True, inferSchema=True)
 
 # Pandas'a Dönüştürme
@@ -48,7 +48,7 @@ model = Sequential([
 model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
 
 # Modeli Eğitme
-history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=50, batch_size=32)
+history = model.fit(X_train, y_train, validation_data=(X_test, y_test), epochs=200, batch_size=32)
 
 # Tahminleri Al
 predictions = (model.predict(X_test) > 0.5).astype(int)

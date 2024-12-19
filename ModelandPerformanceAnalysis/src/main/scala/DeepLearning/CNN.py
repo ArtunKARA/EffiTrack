@@ -15,7 +15,7 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 # 2. Veri Setini Okuma
-file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_undersample_optimized.csv"
+file_path = "C:\\Users\\Artun\\Desktop\\Dosyalar\\github_repos\\EffiTrack\\Data\\HRSS_SMOTE_standard.csv"
 df = spark.read.csv(file_path, header=True, inferSchema=True)
 pandas_df = df.toPandas()  # Spark DataFrame'i Pandas'a donusturme
 
