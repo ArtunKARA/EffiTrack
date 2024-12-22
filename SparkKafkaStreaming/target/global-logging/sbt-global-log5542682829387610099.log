@@ -1,0 +1,50 @@
+[debug] > Exec(early(addDefaultCommands), None, None)
+[debug] > Exec(addDefaultCommands, None, None)
+[debug] > Exec(early(initialize), None, None)
+[debug] > Exec(initialize, None, None)
+[debug] > Exec(boot, None, None)
+[debug] > Exec(writeSbtVersion, None, None)
+[debug] > Exec(reload, None, None)
+[debug] > Exec(sbtStashOnFailure, None, None)
+[debug] > Exec(onFailure loadFailed, None, None)
+[debug] > Exec(loadp, None, None)
+[info] welcome to sbt 1.10.6 (Oracle Corporation Java 1.8.0_202)
+[debug] Load.defaultLoad until apply took 166.5064ms
+[debug]           Load.loadUnit: plugins took 108.9289ms
+[debug]           Load.loadUnit: defsScala took 0.3235ms
+[debug] [Loading] Scanning directory C:\Users\Artun\Desktop\Dosyalar\github_repos\DataFluxAI\SparkKafkaStreaming\project
+[debug] [Loading] Found non-root projects 
+[debug] [Loading] Done in C:\Users\Artun\Desktop\Dosyalar\github_repos\DataFluxAI\SparkKafkaStreaming\project, returning: ()
+[debug] deducing auto plugins based on known facts Set(Atom(sbt.plugins.CorePlugin)) and clauses Clauses(Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.IvyPlugin)))
+[debug] Clause(Atom(sbt.ScriptedPlugin),Set(Atom(sbt.plugins.JvmPlugin)))
+[debug] Clause(Atom(sbt.plugins.SbtPlugin),Set(Atom(sbt.ScriptedPlugin)))
+[debug] Clause(Atom(sbt.plugins.SemanticdbPlugin),Set(Atom(sbt.plugins.JvmPlugin)))
+[debug] Clause(Atom(sbt.plugins.JUnitXmlReportPlugin),Set(Atom(sbt.plugins.JvmPlugin)))
+[debug] Clause(Atom(sbt.plugins.MiniDependencyTreePlugin),Set(Atom(sbt.plugins.JvmPlugin)))
+[debug] Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.IvyPlugin)))
+[debug] Clause(Atom(sbt.plugins.IvyPlugin),Set(Atom(sbt.plugins.JvmPlugin)))
+[debug] Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.SemanticdbPlugin)))
+[debug] Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.JUnitXmlReportPlugin)))
+[debug] Clause(Atom(sbt.plugins.CorePlugin),Set(Atom(sbt.plugins.Giter8TemplatePlugin)))
+[debug] Clause(Atom(sbt.plugins.JvmPlugin),Set(Atom(sbt.plugins.MiniDependencyTreePlugin))))
+[debug]   :: deduced result: Matched(sbt.plugins.CorePlugin,sbt.plugins.Giter8TemplatePlugin,sbt.plugins.IvyPlugin,sbt.plugins.JvmPlugin,sbt.plugins.MiniDependencyTreePlugin,sbt.plugins.JUnitXmlReportPlugin,sbt.plugins.SemanticdbPlugin)
+[debug] Plugins.deducer#function took 124.5123 ms
+[debug]               Load.resolveProject(sparkkafkastreaming-build) took 42.713ms
+[debug]             Load.loadTransitive: finalizeProject(Project(id sparkkafkastreaming-build, base: C:\Users\Artun\Desktop\Dosyalar\github_repos\DataFluxAI\SparkKafkaStreaming\project, plugins: List(<none>))) took 192.995ms
+[debug] [Loading] Done in C:\Users\Artun\Desktop\Dosyalar\github_repos\DataFluxAI\SparkKafkaStreaming\project, returning: (sparkkafkastreaming-build)
+[debug]           Load.loadUnit: loadedProjectsRaw took 213.1432ms
+[debug]           Load.loadUnit: cleanEvalClasses took 0.2511ms
+[debug]         Load.loadUnit(file:/C:/Users/Artun/Desktop/Dosyalar/github_repos/DataFluxAI/SparkKafkaStreaming/project/, ...) took 328.765ms
+[debug]       Load.apply: load took 505.7784ms
+[debug]       Load.apply: resolveProjects took 5.5374ms
+[debug]       Load.apply: finalTransforms took 54.2838ms
+[debug]       Load.apply: config.delegates took 10.0643ms
+[debug]       Load.apply: Def.make(settings)... took 436.9309ms
+[debug]       Load.apply: structureIndex took 106.35ms
+[debug]       Load.apply: mkStreams took 1.9415ms
+[info] loading project definition from C:\Users\Artun\Desktop\Dosyalar\github_repos\DataFluxAI\SparkKafkaStreaming\project
+[debug] Running task... Cancel: Signal, check cycles: false, forcegc: true
+[debug]     Load.loadUnit: plugins took 3263.5491ms
+[debug]     Load.loadUnit: defsScala took 0.0042ms
+[debug] [Loading] Scanning directory C:\Users\Artun\Desktop\Dosyalar\github_repos\DataFluxAI\SparkKafkaStreaming
+[debug]       Load.loadUnit: mkEval took 7.3323ms

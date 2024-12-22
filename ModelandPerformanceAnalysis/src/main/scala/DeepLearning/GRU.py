@@ -89,5 +89,9 @@ plt.legend()
 plt.title("Eğitim ve Doğrulama Kayıpları")
 plt.show()
 
+# Modeli Kaydetme
+model.save("gru_model.h5")
+print("Model başarıyla kaydedildi.")
+
 # Spark Oturumunu Sonlandırma
 spark.stop()
